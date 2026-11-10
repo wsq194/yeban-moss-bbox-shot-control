@@ -13,6 +13,7 @@ Last updated: 2026-11-10
 - **Syntax:** embedded Python `compileall` passed; `node --check` passed for every shipped frontend `.js` file.
 - **Metadata/assets:** `pyproject.toml`, Chinese locale JSON, and the example workflow JSON parsed successfully. Publisher ID and package ID match the intended `wsq194` release.
 - **Workflow note:** repaired the example's corrupted Chinese MarkdownNote, re-parsed the JSON, and verified the private Baidu SAM link remains present.
+- **README localization:** changed user-facing headings and setup instructions to Chinese while keeping code identifiers, CLI commands, environment variables, and model names in stable English; added vendor documentation links for Windows Grok Build and Codex CLI setup.
 - **Package import:** loading this standalone folder under an isolated package name registered exactly the three expected nodes. A first SAM probe used an unqualified submodule import and failed due to the isolated package alias; the corrected qualified import passed and resolved `sam3.1_multiplex_fp16.safetensors` from the registered ComfyUI checkpoint roots.
 - **Registry source scan:** no `eval()`/`exec()` use, runtime pip installation, or bundled credentials found. `subprocess` is used only to invoke a user-selected local CLI / official DSH desktop bridge; README documents the local and API backend choices.
 
