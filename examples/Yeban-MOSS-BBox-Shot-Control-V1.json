@@ -760,7 +760,7 @@
     },
     {
       "id": 9254,
-      "type": "YebanMossBBoxStandaloneV3",
+      "type": "YebanMossBBoxShotControlV1",
       "pos": [
         -6634.168093016605,
         6210.292041975499
@@ -984,7 +984,7 @@
         }
       ],
       "properties": {
-        "Node name for S&R": "YebanMossBBoxStandaloneV3",
+        "Node name for S&R": "YebanMossBBoxShotControlV1",
         "ue_properties": {
           "widget_ue_connectable": {},
           "input_ue_unconnectable": {},

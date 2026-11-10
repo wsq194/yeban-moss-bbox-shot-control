@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
-const NODE_ID = "YebanMossBBoxStandaloneV3";
+const NODE_ID = "YebanMossBBoxShotControlV1";
 const ROUTE = "/yeban/moss-bbox-standalone";
 const BOUND = Symbol("yebanMossBBoxBackendBound");
 const EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh", "max"]);

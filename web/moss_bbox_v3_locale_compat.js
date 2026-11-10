@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 
-const NODE_TYPE = "YebanMossBBoxStandaloneV3";
+const NODE_TYPE = "YebanMossBBoxShotControlV1";
 const LABELS = {
     image: "参考图",
     provider_config: "供应商配置（API 后端）",

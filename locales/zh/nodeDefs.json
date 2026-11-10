@@ -1,5 +1,5 @@
 {
-  "YebanMossBBoxStandaloneV3": {
+  "YebanMossBBoxShotControlV1": {
     "display_name": "Yeban MOSS BBox 景别控制 V1",
     "inputs": {
       "image": {"name": "参考图"},

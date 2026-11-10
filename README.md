@@ -8,7 +8,7 @@
 
 发布到 ComfyUI Registry 后，可通过 ComfyUI Manager 安装。也可以手动下载本仓库，将整个文件夹放入 ComfyUI 的 `custom_nodes` 目录，再重启 ComfyUI。建议文件夹名使用 `Yeban_MOSS_BBox`。
 
-主节点显示为 **Yeban MOSS BBox 景别控制 V1**，分类为 **Yeban/MOSS BBox**。内部节点类型 ID 保持为 `YebanMossBBoxStandaloneV3`，用于兼容已有工作流。插件可以与 `Yeban_Codex_Prompt_Writer` 并存；独立节点 ID、API 路由和供应商配置均有单独命名空间。
+主节点显示为 **Yeban MOSS BBox 景别控制 V1**，分类为 **Yeban/MOSS BBox**，内部节点类型 ID 为 `YebanMossBBoxShotControlV1`。开发期间更换了节点类型 ID；若旧测试工作流仍显示已移除的输入插口，请删除旧节点后，从 **Yeban/MOSS BBox** 分类重新添加新版节点。插件可以与 `Yeban_Codex_Prompt_Writer` 并存；独立节点 ID、API 路由和供应商配置均有单独命名空间。
 
 节点中文标签包含在 `locales/zh/nodeDefs.json` 中。对于 AIGODLIKE 翻译扩展重置未翻译节点名称的情况，插件也带有前端兼容处理。
 
