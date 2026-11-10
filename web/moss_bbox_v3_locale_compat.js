@@ -5,8 +5,6 @@ const LABELS = {
     image: "参考图",
     provider_config: "供应商配置（API 后端）",
     dsh_config: "DSH 配置（DSH 后端）",
-    llama_model: "本地 Llama 模型",
-    llama_parameters: "本地 Llama 参数",
     layout_aspect: "采样画幅比例",
     layout_long_edge: "采样长边（像素）",
     shot_size: "景别",

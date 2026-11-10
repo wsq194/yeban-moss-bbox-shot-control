@@ -7,7 +7,7 @@
       "layout_long_edge": {"name": "采样长边（像素）", "tooltip": "默认 3072。宽高按 16 像素对齐；设为 0 时沿用原图尺寸。"},
       "shot_size": {"name": "景别", "options": {"reference": "沿用原图", "close": "近景", "environmental": "中景", "wide": "远景"}},
       "composition_position": {"name": "构图位置"},
-      "backend": {"name": "后端", "options": {"local_grok": "本机 Grok CLI", "local_codex": "本机 Codex CLI", "dsh_official": "官方 DSH", "openai_compatible": "供应商 API", "local_llama": "本地 Llama-cpp"}},
+      "backend": {"name": "后端", "options": {"local_grok": "本机 Grok CLI", "local_codex": "本机 Codex CLI", "dsh_official": "官方 DSH", "openai_compatible": "供应商 API"}},
       "backend_model": {"name": "模型"},
       "custom_model": {"name": "手填模型（可选）"},
       "reasoning": {"name": "推理强度", "options": {"default": "默认", "none": "关闭", "minimal": "最低", "low": "轻度", "medium": "中等", "high": "高度", "xhigh": "很高", "max": "最高"}},
@@ -19,9 +19,7 @@
       "cache_seed": {"name": "缓存种子"},
       "target_word_count": {"name": "智能反推目标英文词数"},
       "provider_config": {"name": "供应商配置（API 后端）", "tooltip": "仅使用供应商 API 时连接供应商管理器。"},
-      "dsh_config": {"name": "DSH 配置（DSH 后端）", "tooltip": "仅使用官方 DSH 时连接官方 DSH 配置节点。"},
-      "llama_model": {"name": "本地 Llama 模型"},
-      "llama_parameters": {"name": "本地 Llama 参数"}
+      "dsh_config": {"name": "DSH 配置（DSH 后端）", "tooltip": "仅使用官方 DSH 时连接官方 DSH 配置节点。"}
     },
     "outputs": {
       "0": {"name": "MOSS 布局提示词"},

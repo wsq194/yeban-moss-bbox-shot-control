@@ -8,7 +8,7 @@ import math
 from PIL import Image, ImageDraw
 
 from . import nodes
-from .moss_bbox_v2_backends import detect_boxes, llama_facts, resolve_backend
+from .moss_bbox_v2_backends import detect_boxes, resolve_backend
 
 
 _CACHE_VERSION = "moss-vision-facts-v3.3"
@@ -19,6 +19,7 @@ _SHOT_LABELS = {
     "environmental": "中景",
     "wide": "远景",
 }
+_BACKEND_CHOICES = ("local_grok", "local_codex", "dsh_official", "openai_compatible")
 _SHOT_HEIGHT_TARGETS = {"close": 0.90, "environmental": 0.58, "wide": 0.34}
 _POSITION_TARGETS = {
     "upper_left": (0.15, 0.15), "upper_center": (0.50, 0.15), "upper_right": (0.85, 0.15),
@@ -197,7 +198,7 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
                 "display_name": "景别",
                 "tooltip": "景别同时控制人物布局比例：近景约占画高90%，中景约58%，远景约34%；沿用原图保留原始比例。",
             }),
-            "backend": v1["backend"],
+            "backend": (list(_BACKEND_CHOICES), v1["backend"][1]),
             "backend_model": v1["backend_model"],
             "custom_model": v1["custom_model"],
             "reasoning": (["low"], {**v1["reasoning"][1], "default": "low"}),
@@ -216,7 +217,7 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
                 "tooltip": "选择人物与关联前景道具在画面中的位置；沿用原图时不改变位置，近景上下移动会受安全边距限制。",
             }),
         }, "optional": {key: parent["optional"][key] for key in (
-            "provider_config", "dsh_config", "llama_model", "llama_parameters",
+            "provider_config", "dsh_config",
         )}}
 
     RETURN_TYPES = nodes.YebanMossBBoxPrompt.RETURN_TYPES
@@ -228,8 +229,7 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
     def write_layout(self, image, layout_aspect, layout_long_edge, shot_size,
                      backend, backend_model, custom_model, reasoning,
                      subject_setting, photography_style, additional_requirements, timeout, use_cache,
-                     cache_seed, target_word_count, composition_position="center", provider_config=None, dsh_config=None,
-                     llama_model=None, llama_parameters=None):
+                     cache_seed, target_word_count, composition_position="center", provider_config=None, dsh_config=None):
         frames = nodes._normalise_rgb_batch(image)
         if len(frames) != 1:
             raise nodes.PromptWriterError("MOSS BBox V3 每次处理一张参考图。")
@@ -237,7 +237,7 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
         source_w, source_h = photo.size
         model, base_url, api_key, identity = resolve_backend(
             backend, str(custom_model or backend_model or "").strip(),
-            provider_config, dsh_config, llama_model, llama_parameters,
+            provider_config, dsh_config,
         )
         person_boxes, prop_boxes = detect_boxes(frames[0], use_cache)
         people = _boxes(person_boxes, source_w, source_h, "P")
@@ -362,14 +362,11 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
                 cached = None
         if not cached:
             instruction = brief + "\nReturn one JSON object with these string fields: " + ", ".join(fields)
-            if backend == "local_llama":
-                raw = llama_facts(instruction, annotated_png, schema, llama_model, llama_parameters, cache_seed)
-            else:
-                raw = nodes._call_backend(
-                    instruction, annotated_png, backend=backend, base_url=base_url, model=model,
-                    reasoning=nodes._normalise_reasoning(reasoning), timeout=timeout,
-                    api_key_override=api_key, output_schema=schema,
-                )
+            raw = nodes._call_backend(
+                instruction, annotated_png, backend=backend, base_url=base_url, model=model,
+                reasoning=nodes._normalise_reasoning(reasoning), timeout=timeout,
+                api_key_override=api_key, output_schema=schema,
+            )
             facts = _facts(nodes._response_text_for_repair(raw), fields)
             if cache_facts:
                 nodes._write_cache(key, {"prompt_text": json.dumps(facts, ensure_ascii=False)},

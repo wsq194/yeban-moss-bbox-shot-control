@@ -797,22 +797,6 @@
           "link": null
         },
         {
-          "label": "本地 Llama 模型",
-          "localized_name": "本地 Llama 模型",
-          "name": "llama_model",
-          "shape": 7,
-          "type": "LLAMACPPMODEL",
-          "link": null
-        },
-        {
-          "label": "本地 Llama 参数",
-          "localized_name": "本地 Llama 参数",
-          "name": "llama_parameters",
-          "shape": 7,
-          "type": "LLAMACPPARAMS",
-          "link": null
-        },
-        {
           "label": "采样画幅比例",
           "localized_name": "采样画幅比例",
           "name": "layout_aspect",
@@ -1070,7 +1054,7 @@
         }
       },
       "widgets_values": [
-        "## Yeban MOSS BBox 景别控制 V1\n\n将参考图转换为 MOSS BBox 布局提示词，同时输出独立的智能反推提示词。\n\n### 使用步骤\n\n1. 在“加载图像”节点上传参考图。\n2. 在本节点选择景别；需要调整主体位置时，再选九宫格位置。\n3. 将“MOSS 布局提示词”连接到 MOSS Image 的布局提示词输入，并将“采样宽度”“采样高度”连接到空 Latent 的宽高输入。\n4. 按需连接“智能反推提示词”到普通正向提示词流。\n5. 点击运行。启用缓存后，切换景别或构图位置会复用图像分析结果并重新计算布局。\n\n### SAM 模型\n\n节点会在 ComfyUI 注册的 `checkpoints` 模型目录中自动查找：\n\n`sam3.1_multiplex_fp16.safetensors`\n\n推荐放在 `ComfyUI/models/checkpoints/`；自定义目录需加入 ComfyUI 的 checkpoint 搜索路径。模型约 1.75 GB。可从[官方 Hugging Face 下载](https://huggingface.co/Comfy-Org/sam3.1/resolve/main/checkpoints/sam3.1_multiplex_fp16.safetensors)，并遵守模型页面列出的 SAM License。\n\n百度网盘备用地址：https://pan.baidu.com/s/1EMgLhpDgDjHHvhitZGHGjA?pwd=rdtd\n\n### 说明\n\n示例不包含参考图片、SAM 权重、MOSS 模型文件或 API 凭据。默认后端为本机 Grok CLI。使用 DSH、兼容 API 或本地 Llama 时，请连接相应配置或模型输入。人物姿势、身份、服装与场景细节仍受图像模型影响。"
+        "## Yeban MOSS BBox 景别控制 V1\n\n将参考图转换为 MOSS BBox 布局提示词，同时输出独立的智能反推提示词。\n\n### 使用步骤\n\n1. 在“加载图像”节点上传参考图。\n2. 在本节点选择景别；需要调整主体位置时，再选九宫格位置。\n3. 将“MOSS 布局提示词”连接到 MOSS Image 的布局提示词输入，并将“采样宽度”“采样高度”连接到空 Latent 的宽高输入。\n4. 按需连接“智能反推提示词”到普通正向提示词流。\n5. 点击运行。启用缓存后，切换景别或构图位置会复用图像分析结果并重新计算布局。\n\n### SAM 模型\n\n节点会在 ComfyUI 注册的 `checkpoints` 模型目录中自动查找：\n\n`sam3.1_multiplex_fp16.safetensors`\n\n推荐放在 `ComfyUI/models/checkpoints/`；自定义目录需加入 ComfyUI 的 checkpoint 搜索路径。模型约 1.75 GB。可从[官方 Hugging Face 下载](https://huggingface.co/Comfy-Org/sam3.1/resolve/main/checkpoints/sam3.1_multiplex_fp16.safetensors)，并遵守模型页面列出的 SAM License。\n\n百度网盘备用地址：https://pan.baidu.com/s/1EMgLhpDgDjHHvhitZGHGjA?pwd=rdtd\n\n### 说明\n\n示例不包含参考图片、SAM 权重、MOSS 模型文件或 API 凭据。默认后端为本机 Grok CLI。使用 DSH 或兼容 API 时，请连接相应配置节点。当前版本不提供本地 Llama 推理。人物姿势、身份、服装与场景细节仍受图像模型影响。"
       ],
       "widgets_values_named": {
         "text": "## Yeban MOSS BBox 提示词 V3\n\n将参考图反推为 MOSS BBox 布局提示词，并同时输出一条独立的智能反推提示词。\n\n### SAM 模型检测\n\n节点会自动在 ComfyUI 已注册的 `checkpoints` 模型目录及其子文件夹中查找：\n\n`sam3.1_multiplex_fp16.safetensors`\n\n推荐放在 `ComfyUI/models/checkpoints/`。自定义模型目录需加入 ComfyUI 的 checkpoint 搜索路径。模型下载约 1.75 GB：[下载 SAM 3.1](https://huggingface.co/Comfy-Org/sam3.1/resolve/main/checkpoints/sam3.1_multiplex_fp16.safetensors)。请遵守模型页面所列的 SAM License。\n\n网盘链接: https://pan.baidu.com/s/1EMgLhpDgDjHHvhitZGHGjA?pwd=rdtd \n\n### 主要设置\n\n- **采样画幅比例、采样长边**：决定输出的采样宽度和高度，连接到空 Latent 的宽高输入。\n- **景别**：沿用原图保留人物原始比例；近景约占画高 90%，中景约 58%，远景约 34%。这是构图引导，不是硬性尺寸锁定。\n- **构图位置**：通过九宫格选择人物及关联前景物的大致位置；人物完整度和画面安全边距会限制可移动范围。\n- **后端、模型、推理强度**：选择负责理解参考图并提取人物、姿势、服装、道具和环境事实的视觉模型。默认后端为本机 Grok CLI。\n- **人物设定、摄影风格、附加提示词**：按需填写；附加提示词可以留空。\n\n### 输出\n\n1. **MOSS 布局提示词**：连接到 MOSS Image 工作流的布局提示词输入。\n2. **采样宽度、采样高度**：连接到空 Latent 的宽度、高度输入。\n3. **智能反推提示词**：描述原图可见事实的独立提示词，可连接到普通正向提示词流程。\n\n启用缓存后，切换景别或构图位置会复用已提取的图像事实，重新计算布局，不必再次调用视觉后端。最终生成的姿势、人物比例和细节仍可能受模型影响。"
