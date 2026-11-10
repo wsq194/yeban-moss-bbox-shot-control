@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.user_data/
+.ruff_cache/
+.pytest_cache/
+tests/
+docs/

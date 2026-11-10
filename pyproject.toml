@@ -1,0 +1,27 @@
+[project]
+name = "yeban-moss-bbox-shot-control"
+version = "0.1.0"
+description = "Windows-only MOSS BBox scene-scale and composition control nodes for ComfyUI."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE" }
+dependencies = []
+authors = [
+  { name = "Jun (wsq194)" },
+]
+keywords = ["comfyui", "moss-image", "bbox", "composition", "windows"]
+classifiers = [
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: Microsoft :: Windows",
+  "Programming Language :: Python :: 3",
+]
+
+[project.urls]
+Repository = "https://github.com/wsq194/yeban-moss-bbox-shot-control"
+Documentation = "https://github.com/wsq194/yeban-moss-bbox-shot-control#readme"
+"Bug Tracker" = "https://github.com/wsq194/yeban-moss-bbox-shot-control/issues"
+
+[tool.comfy]
+PublisherId = "wsq194"
+DisplayName = "Yeban MOSS BBox 景别控制 V1"
+Icon = ""
