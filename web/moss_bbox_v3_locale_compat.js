@@ -1,10 +1,12 @@
 import { app } from "../../scripts/app.js";
 
-const NODE_TYPE = "YebanMossBBoxShotControlV1";
+const NODE_TYPE = "YebanMossBBoxStandaloneV3";
 const LABELS = {
     image: "参考图",
     provider_config: "供应商配置（API 后端）",
     dsh_config: "DSH 配置（DSH 后端）",
+    llama_model: "本地 Llama 模型",
+    llama_parameters: "本地 Llama 参数",
     layout_aspect: "采样画幅比例",
     layout_long_edge: "采样长边（像素）",
     shot_size: "景别",
@@ -20,6 +22,18 @@ const LABELS = {
     use_cache: "使用缓存",
     cache_seed: "缓存种子",
     target_word_count: "智能反推目标英文词数",
+    fusion_mode: "融合方式",
+    reverse_tendency: "反推方向",
+    character_sheet_lead: "角色卡主角",
+    cinematic_enhancement: "电影感增强",
+    nsfw_fidelity: "NSFW 写作优化",
+    nsfw_strong_fidelity: "NSFW 强烈忠实反推",
+    conversation_reuse: "复用后端会话",
+};
+const PLACEHOLDERS = {
+    subject_setting: "人物基础设定（可选，可留空）",
+    photography_style: "摄影风格（可选，可留空）",
+    additional_requirements: "附加提示词（可选，可留空）",
 };
 
 function isChineseLocale() {
@@ -43,6 +57,8 @@ function translate(node) {
     for (const widget of node.widgets ?? []) {
         const label = LABELS[widget.name];
         if (label) widget.label = label;
+        const placeholder = PLACEHOLDERS[widget.name];
+        if (placeholder && widget.inputEl) widget.inputEl.placeholder = placeholder;
     }
     node.setDirtyCanvas?.(true, true);
 }

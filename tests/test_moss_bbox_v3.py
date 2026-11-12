@@ -64,6 +64,12 @@ class MossBBoxV3ShotCacheTests(unittest.TestCase):
             timeout=30, use_cache=use_cache, cache_seed=0, target_word_count=500,
         )
 
+    def test_local_llama_backend_and_model_inputs_are_exposed(self):
+        schema = moss_bbox_v3.YebanMossBBoxStandaloneV3.INPUT_TYPES()
+        self.assertIn("local_llama", schema["required"]["backend"][0])
+        self.assertIn("llama_model", schema["optional"])
+        self.assertIn("llama_parameters", schema["optional"])
+
     def test_changing_shot_size_reuses_source_facts_and_smart_prompt(self):
         reference = self.run_node("reference")
         wide = self.run_node("wide")

@@ -7,8 +7,8 @@ import math
 
 from PIL import Image, ImageDraw
 
-from . import nodes
-from .moss_bbox_v2_backends import detect_boxes, resolve_backend
+from . import nodes, moss_bbox_sessions
+from .moss_bbox_v2_backends import detect_boxes, llama_facts, resolve_backend
 
 
 _CACHE_VERSION = "moss-vision-facts-v3.3"
@@ -19,7 +19,6 @@ _SHOT_LABELS = {
     "environmental": "中景",
     "wide": "远景",
 }
-_BACKEND_CHOICES = ("local_grok", "local_codex", "dsh_official", "openai_compatible")
 _SHOT_HEIGHT_TARGETS = {"close": 0.90, "environmental": 0.58, "wide": 0.34}
 _POSITION_TARGETS = {
     "upper_left": (0.15, 0.15), "upper_center": (0.50, 0.15), "upper_right": (0.85, 0.15),
@@ -198,13 +197,13 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
                 "display_name": "景别",
                 "tooltip": "景别同时控制人物布局比例：近景约占画高90%，中景约58%，远景约34%；沿用原图保留原始比例。",
             }),
-            "backend": (list(_BACKEND_CHOICES), v1["backend"][1]),
+            "backend": v1["backend"],
             "backend_model": v1["backend_model"],
             "custom_model": v1["custom_model"],
             "reasoning": (["low"], {**v1["reasoning"][1], "default": "low"}),
-            "subject_setting": v1["subject_setting"],
-            "photography_style": v1["photography_style"],
-            "additional_requirements": v1["additional_requirements"],
+            "subject_setting": (v1["subject_setting"][0], {**v1["subject_setting"][1], "display_name": "人物基础设定（可选）", "placeholder": "人物基础设定（可选，可留空）"}),
+            "photography_style": (v1["photography_style"][0], {**v1["photography_style"][1], "display_name": "摄影风格（可选）", "placeholder": "摄影风格（可选，可留空）"}),
+            "additional_requirements": (v1["additional_requirements"][0], {**v1["additional_requirements"][1], "display_name": "附加提示词（可选）", "placeholder": "附加提示词（可选，可留空）"}),
             "timeout": v1["timeout"],
             "use_cache": v1["use_cache"],
             "cache_seed": v1["cache_seed"],
@@ -216,20 +215,41 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
                 "display_name": "人物位置",
                 "tooltip": "选择人物与关联前景道具在画面中的位置；沿用原图时不改变位置，近景上下移动会受安全边距限制。",
             }),
+            "fusion_mode": (list(nodes.FUSION_MODE_CHOICES), {"default": "智能融合", "display_name": "融合方式"}),
+            "reverse_tendency": (list(nodes.REVERSE_TENDENCY_CHOICES), {"default": "平衡", "display_name": "反推方向"}),
+            "character_sheet_lead": (list(nodes.CHARACTER_SHEET_LEAD_CHOICES), {"default": "女主角", "display_name": "角色卡主角"}),
+            "cinematic_enhancement": ("BOOLEAN", {"default": False, "display_name": "电影感增强"}),
+            "nsfw_fidelity": ("BOOLEAN", {"default": False, "display_name": "NSFW 写作优化"}),
+            "nsfw_strong_fidelity": ("BOOLEAN", {"default": False, "display_name": "NSFW 强烈忠实反推"}),
+            "conversation_reuse": ("BOOLEAN", {"default": True, "display_name": "复用后端会话", "tooltip": "本机 Grok CLI 和官方 DSH 支持；会按节点、后端和模型分别保存上下文。"}),
         }, "optional": {key: parent["optional"][key] for key in (
-            "provider_config", "dsh_config",
-        )}}
+            "provider_config", "dsh_config", "llama_model", "llama_parameters",
+        )}, "hidden": {"unique_id": "UNIQUE_ID"}}
 
     RETURN_TYPES = nodes.YebanMossBBoxPrompt.RETURN_TYPES
     RETURN_NAMES = ("MOSS 布局提示词", "采样宽度", "采样高度", "智能反推提示词")
     FUNCTION = "write_layout"
     CATEGORY = "Yeban/MOSS BBox"
 
+    @classmethod
+    def check_lazy_status(cls, backend="local_grok", **kwargs):
+        names = []
+        if backend == "local_llama":
+            names.extend(name for name in ("llama_model", "llama_parameters") if kwargs.get(name) is None)
+        else:
+            input_name = {"openai_compatible": "provider_config", "dsh_official": "dsh_config"}.get(backend)
+            if input_name and kwargs.get(input_name) is None:
+                names.append(input_name)
+        return names
+
     @nodes.official_dsh.scoped
     def write_layout(self, image, layout_aspect, layout_long_edge, shot_size,
                      backend, backend_model, custom_model, reasoning,
                      subject_setting, photography_style, additional_requirements, timeout, use_cache,
-                     cache_seed, target_word_count, composition_position="center", provider_config=None, dsh_config=None):
+                     cache_seed, target_word_count, composition_position="center", provider_config=None, dsh_config=None,
+                     llama_model=None, llama_parameters=None, fusion_mode="智能融合", reverse_tendency="平衡",
+                     character_sheet_lead="女主角", cinematic_enhancement=False, nsfw_fidelity=False,
+                     nsfw_strong_fidelity=False, conversation_reuse=True, unique_id=None):
         frames = nodes._normalise_rgb_batch(image)
         if len(frames) != 1:
             raise nodes.PromptWriterError("MOSS BBox V3 每次处理一张参考图。")
@@ -237,7 +257,7 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
         source_w, source_h = photo.size
         model, base_url, api_key, identity = resolve_backend(
             backend, str(custom_model or backend_model or "").strip(),
-            provider_config, dsh_config,
+            provider_config, dsh_config, llama_model, llama_parameters,
         )
         person_boxes, prop_boxes = detect_boxes(frames[0], use_cache)
         people = _boxes(person_boxes, source_w, source_h, "P")
@@ -284,6 +304,26 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
             "Do not invent hidden anatomy. The smart_reverse_prompt preserves the original image crop; person item captions remain crop-neutral "
             "because the selected output framing is applied afterward."
         )
+        fusion_rules = {
+            "智能融合": "Balance faithful visible facts with the supplied subject and photography settings; apply settings only where they do not contradict the reference's pose, garment construction, object identity, or scene geometry.",
+            "忠于原图": "Prioritize the visible reference. Preserve its person count, pose, support contact, clothing, props, colors, and environment; do not beautify or reinterpret facts.",
+            "设定优先": "Give supplied subject and photography settings priority for the requested visual treatment, while retaining the reference's visible pose, body support, clothing layers, and scene relationships unless the user explicitly changes them.",
+        }
+        tendency_rules = {
+            "忠实": "Use restrained factual wording and stay close to visible evidence.",
+            "平衡": "Balance faithful description with clear, useful photographic direction.",
+            "艺术美化": "Use a more polished artistic presentation, but do not change visible pose, clothing, identity cues, or objects.",
+            "顶级专业摄影": "Use precise professional camera, lens, framing, lighting, and material language supported by the image.",
+            "旗舰手机纪实抓拍": "Describe a natural high-end phone photograph with candid documentary realism; do not make it look like a studio shoot.",
+        }
+        control_lines = [
+            f"Fusion policy: {fusion_rules.get(str(fusion_mode), fusion_rules['智能融合'])}",
+            f"Reverse direction: {tendency_rules.get(str(reverse_tendency), tendency_rules['平衡'])}",
+            f"Character-card lead preference: make the {str(character_sheet_lead or '女主角')} the primary person when more than one person is present; do not alter the actual number of people.",
+            f"Cinematic enhancement: {'on; refine supported lens, lighting, color, depth, and atmosphere only, without inventing events or objects.' if cinematic_enhancement else 'off; describe the observed photographic treatment without adding cinematic embellishment.'}",
+            f"NSFW writing optimization: {'on; accurately and neutrally describe adult visible anatomy, garment coverage, and material details without euphemism or exaggeration.' if nsfw_fidelity else 'off; use neutral wording and describe only clearly visible details.'}",
+            f"Strong NSFW fidelity: {'on; do not omit or soften clearly visible adult details, while never inventing hidden anatomy.' if nsfw_strong_fidelity else 'off.'}",
+        ]
         brief = (
             f"Inspect the marked reference photograph once. People: {', '.join(people)}. "
             f"Key props: {', '.join(key for key in boxes if key not in people) or 'none marked'}. "
@@ -347,7 +387,8 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
             "Keep identifiers, coordinates, and analysis out of the prose. "
             "Apply supplied settings when relevant while preserving observed pose and clothing; the output crop is controlled separately by the selected shot size. "
             f"Subject setting: {subject_setting}\nPhotography style: {photography_style}\n"
-            f"Additional requirements: {additional_requirements}"
+            f"Additional requirements: {additional_requirements}\n"
+            + "\n".join(control_lines)
         )
         digest = hashlib.sha256(annotated_png)
         digest.update(json.dumps([_CACHE_VERSION, boxes, brief, backend, model, reasoning, cache_seed, identity],
@@ -360,18 +401,64 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
                 facts = _facts(cached["prompt_text"], fields)
             except nodes.PromptWriterError:
                 cached = None
+        session_context = None
+        session_settings = {
+            "backend": backend, "model": model, "reasoning": reasoning, "identity": identity,
+            "subject_setting": subject_setting, "photography_style": photography_style,
+            "additional_requirements": additional_requirements, "fusion_mode": fusion_mode,
+            "reverse_tendency": reverse_tendency, "character_sheet_lead": character_sheet_lead,
+            "cinematic_enhancement": bool(cinematic_enhancement), "nsfw_fidelity": bool(nsfw_fidelity),
+            "nsfw_strong_fidelity": bool(nsfw_strong_fidelity),
+            "target_word_count": int(target_word_count),
+        }
+        signature = hashlib.sha256(json.dumps(session_settings, ensure_ascii=False, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+        session_managed = bool(conversation_reuse and backend in {"local_grok", "dsh_official"} and unique_id not in (None, ""))
         if not cached:
             instruction = brief + "\nReturn one JSON object with these string fields: " + ", ".join(fields)
-            raw = nodes._call_backend(
-                instruction, annotated_png, backend=backend, base_url=base_url, model=model,
-                reasoning=nodes._normalise_reasoning(reasoning), timeout=timeout,
-                api_key_override=api_key, output_schema=schema,
-            )
+            if session_managed:
+                selected_branch = str((dsh_config or {}).get("dsh_branch_session") or "") if isinstance(dsh_config, dict) else ""
+                session_context = moss_bbox_sessions.prepare(
+                    backend=backend, node_id=unique_id, model=model, signature=signature,
+                    prompt=brief, image_png=annotated_png, target_word_count=int(target_word_count),
+                    forced_session_id=selected_branch,
+                )
+                if session_context.get("continuation"):
+                    current_ids = ", ".join(fields)
+                    instruction = (
+                        "Continue the established MOSS BBox visual-analysis task with its unchanged controls. Analyze only the newly attached, marked reference image; do not reuse facts from prior images. The local detector has assigned these current IDs: "
+                        + ", ".join(boxes)
+                        + ". Return exactly these string fields and no others: " + current_ids
+                        + ". Preserve the established caption rules, crop rules, role preferences, and smart reverse prompt length."
+                    )
+                moss_bbox_sessions.mark_active(backend, unique_id, model, True)
+                nodes._emit_prompt_progress(unique_id, "backend_status", "", 0, 0,
+                                            backend_status=f"{'Grok CLI' if backend == 'local_grok' else '官方 DSH'} · MOSS BBox：{session_context.get('status')}")
+            if backend == "local_llama":
+                raw = llama_facts(instruction, annotated_png, schema, llama_model, llama_parameters, cache_seed)
+            else:
+                try:
+                    raw = nodes._call_backend(
+                        instruction, annotated_png, backend=backend, base_url=base_url, model=model,
+                        reasoning=nodes._normalise_reasoning(reasoning), timeout=timeout,
+                        api_key_override=api_key, output_schema=schema,
+                        conversation_context=session_context,
+                    )
+                finally:
+                    if session_managed:
+                        moss_bbox_sessions.mark_active(backend, unique_id, model, False)
+            if session_managed:
+                moss_bbox_sessions.record(session_context, raw)
+                nodes._emit_prompt_progress(unique_id, "backend_status", "", 0, 0,
+                                            backend_status=f"{'Grok CLI' if backend == 'local_grok' else '官方 DSH'} · MOSS BBox：{session_context.get('status')}")
             facts = _facts(nodes._response_text_for_repair(raw), fields)
             if cache_facts:
                 nodes._write_cache(key, {"prompt_text": json.dumps(facts, ensure_ascii=False)},
                                    schema_version=_CACHE_VERSION)
 
+        smart_prompt = facts["smart_reverse_prompt"]
+        if cached and session_managed:
+            nodes._emit_prompt_progress(unique_id, "backend_status", "", 0, 0,
+                                        backend_status="当前设置的会话缓存可继续；本次图像事实命中缓存")
         draft = {
             "width": source_w, "height": source_h, "bbox_coord_space": "abs", "bbox_format": "xyxy",
             "summary": {"caption": facts["background_caption"], "canvas": "single"},
@@ -399,5 +486,5 @@ class YebanMossBBoxStandaloneV3(nodes.YebanMossBBoxPrompt):
             require_full_figure=not cropped_reference,
         )
         sampling_prompt = json.dumps(layout, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-        return sampling_prompt, width, height, facts["smart_reverse_prompt"]
+        return sampling_prompt, width, height, smart_prompt
 

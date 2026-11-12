@@ -173,7 +173,7 @@ def run(prompt, images, config, schema, cwd, timeout=240):
     frames = queue.Queue()
     threading.Thread(target=lambda: [frames.put(line) for line in child.stdout], daemon=True).start()
     deadline = time.monotonic() + timeout
-    session_id = branch_id or "storyboard-" + uuid.uuid4().hex
+    session_id = branch_id or str(config.get("conversation_session_id") or "") or "storyboard-" + uuid.uuid4().hex
 
     def send(number, method, params):
         child.stdin.write(json.dumps({"jsonrpc": "2.0", "id": number, "method": method, "params": params}, ensure_ascii=False) + "\n")

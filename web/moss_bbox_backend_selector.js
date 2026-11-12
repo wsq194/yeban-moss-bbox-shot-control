@@ -1,7 +1,7 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
-const NODE_ID = "YebanMossBBoxShotControlV1";
+const NODE_ID = "YebanMossBBoxStandaloneV3";
 const ROUTE = "/yeban/moss-bbox-standalone";
 const BOUND = Symbol("yebanMossBBoxBackendBound");
 const EFFORTS = new Set(["none", "minimal", "low", "medium", "high", "xhigh", "max"]);
@@ -36,8 +36,9 @@ function bind(node) {
         const requestId = ++revision;
         const selectedBackend = backend.value;
         const isDsh = selectedBackend === "dsh_official";
-        hideModelControls(isDsh);
-        status(isDsh ? "请在 DSH 配置节点选择模型" : "正在读取模型选项…");
+        const isLlama = selectedBackend === "local_llama";
+        hideModelControls(isDsh || isLlama);
+        status(isDsh ? "请在 DSH 配置节点选择模型" : isLlama ? "使用已连接的本地 Llama 模型" : "正在读取模型选项…");
         let data = {};
         let hint = "";
 
@@ -46,6 +47,10 @@ function bind(node) {
                 hint = node.inputs?.some((slot) => slot.name === "dsh_config" && slot.link != null)
                     ? "模型和对话分支由已连接的 DSH 配置节点提供"
                     : "请连接 MOSS BBox 官方 DSH 配置节点";
+            } else if (isLlama) {
+                hint = node.inputs?.some((slot) => slot.name === "llama_model" && slot.link != null)
+                    ? "模型和参数由已连接的本地 Llama 节点提供"
+                    : "请连接支持图片输入的本地 Llama 模型";
             } else if (selectedBackend === "openai_compatible") {
                 const index = node.inputs?.findIndex((slot) => slot.name === "provider_config") ?? -1;
                 const provider = index >= 0 ? node.getInputNode?.(index) : null;
@@ -114,7 +119,7 @@ function bind(node) {
     node.onConnectionsChange = function (...args) {
         const result = originalConnectionsChange?.apply(this, args);
         const slot = this.inputs?.[args[1]];
-        if (args[0] === 1 && ["provider_config", "dsh_config"].includes(slot?.name)) schedule();
+        if (args[0] === 1 && ["provider_config", "dsh_config", "llama_model"].includes(slot?.name)) schedule();
         return result;
     };
     node[BOUND] = schedule;

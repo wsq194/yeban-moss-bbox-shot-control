@@ -10,6 +10,7 @@ local CLI environment variables.
 from __future__ import annotations
 
 import base64
+from contextlib import nullcontext
 import hashlib
 import importlib.util
 import io
@@ -3225,6 +3226,7 @@ def _run_local_grok(
     reasoning: str = "default",
     output_schema: Mapping[str, Any] | None = None,
     plain_text: bool = False,
+    conversation_context: Mapping[str, Any] | None = None,
 ) -> str:
     """Run one local Grok vision turn through its ACP stdio transport."""
     command = discover_local_grok()
@@ -3243,7 +3245,9 @@ def _run_local_grok(
     model = selected if selected.casefold().startswith("grok") else DEFAULT_GROK_MODEL
     effort = _grok_acp_effort(reasoning)
     wait_seconds = official_dsh.remaining_timeout(_grok_effective_timeout(timeout, len(images)), record_call=False)
-    with tempfile.TemporaryDirectory(prefix="yeban_grok_prompt_writer_", ignore_cleanup_errors=True) as temp_dir:
+    persistent = isinstance(conversation_context, dict) and bool(conversation_context.get("cwd"))
+    temp_scope = nullcontext(str(conversation_context["cwd"])) if persistent else tempfile.TemporaryDirectory(prefix="yeban_grok_prompt_writer_", ignore_cleanup_errors=True)
+    with temp_scope as temp_dir:
         process = None
         started = time.monotonic()
         stderr_chunks: list[str] = []
@@ -3266,14 +3270,39 @@ def _run_local_grok(
                            "clientCapabilities": {"fs": {"readTextFile": False, "writeTextFile": False}}},
             }, deadline)
             _acp_send(process.stdin, {"jsonrpc": "2.0", "method": "initialized"})
-            session, _ = _acp_exchange(process.stdin, process.stdout, {
-                "jsonrpc": "2.0", "id": 2, "method": "session/new",
-                "params": {"cwd": temp_dir, "mcpServers": [], "_meta": {"yoloMode": True,
-                           "systemPromptOverride": ("Return only the requested natural English image-edit prompt. Do not call tools or explain." if plain_text else "Return only the requested JSON object. Do not call tools or explain.")}},
-            }, deadline)
-            session_id = str(session.get("sessionId") or "") if isinstance(session, Mapping) else ""
+            previous_session_id = str((conversation_context or {}).get("session_id") or "")
+            session_method = "session/load" if previous_session_id else "session/new"
+            session_params = {"cwd": temp_dir, "mcpServers": [], "_meta": {"yoloMode": True,
+                "systemPromptOverride": ("Return only the requested natural English image-edit prompt. Do not call tools or explain." if plain_text else "Return only the requested JSON object. Do not call tools or explain.")}}
+            if previous_session_id:
+                session_params["sessionId"] = previous_session_id
+            try:
+                session, _ = _acp_exchange(process.stdin, process.stdout, {
+                    "jsonrpc": "2.0", "id": 2, "method": session_method, "params": session_params,
+                }, deadline)
+            except PromptWriterError as exc:
+                if not previous_session_id or "session/load failed" not in str(exc):
+                    raise
+                previous_session_id = ""
+                session_params.pop("sessionId", None)
+                if isinstance(conversation_context, dict):
+                    conversation_context["session_id"] = ""
+                    conversation_context["reset"] = True
+                    conversation_context["continuation"] = False
+                    conversation_context["status"] = "旧会话无法恢复，已新建会话"
+                blocks[0]["text"] = str((conversation_context or {}).get("full_prompt") or prompt).rstrip() if plain_text else (
+                    f"{str((conversation_context or {}).get('full_prompt') or prompt).rstrip()}\n\n"
+                    "Return ONLY one JSON object matching this schema, with no tools and no markdown:\n"
+                    f"{json.dumps(schema, ensure_ascii=False)}"
+                )
+                session, _ = _acp_exchange(process.stdin, process.stdout, {
+                    "jsonrpc": "2.0", "id": 4, "method": "session/new", "params": session_params,
+                }, deadline)
+            session_id = previous_session_id or (str(session.get("sessionId") or "") if isinstance(session, Mapping) else "")
             if not session_id:
                 raise PromptWriterError("Local Grok ACP did not create a session")
+            if isinstance(conversation_context, dict):
+                conversation_context["session_id"] = session_id
             _result, text = _acp_exchange(process.stdin, process.stdout, {
                 "jsonrpc": "2.0", "id": 3, "method": "session/prompt",
                 "params": {"sessionId": session_id, "prompt": blocks},
@@ -5718,12 +5747,15 @@ def _call_backend(
     api_key_override: str | None = None,
     isolated_provider: Mapping[str, Any] | None = None,
     output_schema: Mapping[str, Any] | None = None,
+    conversation_context: Mapping[str, Any] | None = None,
 ) -> str:
     timeout = official_dsh.remaining_timeout(timeout)
     backend_name = _normalise_backend(backend)
     if backend_name == "dsh_official":
         config = dict(official_dsh.CURRENT_CONFIG.get() or official_dsh.defaults())
         config["model"] = model
+        if isinstance(conversation_context, Mapping) and conversation_context.get("session_id"):
+            config["conversation_session_id"] = str(conversation_context["session_id"])
         try:
             return official_dsh.transport().run(prompt, _coerce_png_list(image_png), config, dict(output_schema or IMAGE_OUTPUT_SCHEMA), Path(__file__).resolve().parents[2], timeout=timeout)
         except Exception as error:
@@ -5734,7 +5766,8 @@ def _call_backend(
         )
     if backend_name == "local_grok":
         return _run_local_grok(
-            prompt, image_png, model, timeout, reasoning, output_schema=output_schema
+            prompt, image_png, model, timeout, reasoning, output_schema=output_schema,
+            conversation_context=conversation_context,
         )
     if backend_name == "packy_codex":
         return _run_local_codex(

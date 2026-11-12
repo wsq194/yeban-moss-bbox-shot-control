@@ -1,0 +1,24 @@
+.yeban-moss-session {
+    box-sizing: border-box;
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid rgba(128, 160, 180, 0.3);
+    border-radius: 7px;
+    background: rgba(20, 28, 34, 0.72);
+    color: #d7e0e5;
+    font: 12px/1.35 sans-serif;
+}
+.yeban-moss-session[hidden] { display: none; }
+.yeban-moss-session__row { display: flex; align-items: center; gap: 8px; }
+.yeban-moss-session__row span { color: #aebdc5; }
+.yeban-moss-session__row b { flex: 1; font-weight: 600; }
+.yeban-moss-session__row button {
+    border: 1px solid rgba(170, 190, 200, 0.38);
+    border-radius: 5px;
+    padding: 3px 7px;
+    background: rgba(255, 255, 255, 0.06);
+    color: inherit;
+    cursor: pointer;
+}
+.yeban-moss-session__row button:disabled { opacity: 0.45; cursor: default; }
+.yeban-moss-session small { display: block; margin-top: 3px; color: #8f9ea6; }

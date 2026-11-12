@@ -106,7 +106,7 @@ def detect_boxes(frame, use_cache):
     return people, selected
 
 
-def resolve_backend(backend, model, provider_config, dsh_config):
+def resolve_backend(backend, model, provider_config, dsh_config, llama_model, llama_parameters):
     base_url, api_key, identity = "", None, None
     if backend == "openai_compatible":
         profile = nodes._provider_runtime(provider_config)
@@ -123,6 +123,10 @@ def resolve_backend(backend, model, provider_config, dsh_config):
             raise nodes.PromptWriterError("请接入「夜半 官方 DSH 配置」。")
         model = dsh_config.get("model") or "deepseek-v4.1-flash"
         identity = (dsh_config.get("dsh_provider"), dsh_config.get("dsh_branch_session"))
+    elif backend == "local_llama":
+        if llama_model is None:
+            raise nodes.PromptWriterError("请连接支持图片输入的本地 Llama 模型。")
+        identity = nodes._local_pipe_cache_identity((llama_model, llama_parameters))
     elif backend == "local_grok":
         model = model or "grok-4.7"
         if not model.casefold().startswith("grok"):
@@ -132,3 +136,24 @@ def resolve_backend(backend, model, provider_config, dsh_config):
     else:
         raise nodes.PromptWriterError("不支持的 MOSS V2 后端。")
     return model, base_url, api_key, identity
+
+
+def llama_facts(brief, png, schema, model, parameters, seed):
+    bridge = nodes._load_local_h3_bridge()
+    result = nodes._budgeted_bridge_call(
+        bridge.run_local_llama_reverse_prompt,
+        llama_model=nodes._unwrap_local_pipe(model),
+        parameters=nodes._unwrap_local_pipe(parameters),
+        image=nodes._png_bytes_to_local_image(png),
+        prompt_version="moss_visual_facts_v2",
+        system_prompt=brief,
+        response_format_override={"type": "json_schema", "json_schema": {
+            "name": "moss_visual_facts", "strict": True, "schema": schema,
+        }},
+        mode="general_reverse", seed=seed, use_cache=False, force_offload=True,
+    )
+    if not isinstance(result, Mapping):
+        raise nodes.PromptWriterError("本地 Llama 返回无效。")
+    if result.get("error"):
+        raise nodes.PromptWriterError(str(result["error"]))
+    return result.get("text", "")

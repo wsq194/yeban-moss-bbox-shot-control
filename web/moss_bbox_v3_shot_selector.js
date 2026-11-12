@@ -1,6 +1,6 @@
 import { app } from "../../scripts/app.js";
 
-const NODE_TYPE = "YebanMossBBoxShotControlV1";
+const NODE_TYPE = "YebanMossBBoxStandaloneV3";
 const SHOTS = [
     ["reference", "沿用原图", "原图大小"],
     ["close", "近景", "约 90% 画高"],
