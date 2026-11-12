@@ -6,12 +6,16 @@ Create a MOSS BBox layout prompt from a reference image, then adjust the subject
 
 This is a Windows-only ComfyUI custom-node package. It does not bundle SAM, MOSS, or vision models, and it does not install or sign in to backend clients for you.
 
-## What changed in 0.1.1
+## Update · 0.1.1 · 2026-11-12
 
-- Updated the example workflow to match the current node identity, shot/composition controls, and sampling chain.
-- Added persistent conversation reuse for local Grok CLI and official DSH, with visible session status and a clear-session control.
-- Retained fusion, reverse-direction, cinematic, and NSFW-fidelity settings, and included the tested local Llama model input.
-- Fixed Chinese and English UI mappings and dynamic model-option refresh.
+**MOSS BBox is updated, with a focus on composition control.**
+
+The example workflow has been updated and sampling settings adjusted. In our tests, MOSS Turbo was easier to guide with composition instructions than the original SFT model. Results may vary with the model and workflow settings.
+
+- **Resume Grok and official DSH conversations**: check the session status and clear a session when needed, with less repeated setup.
+- **Connect a local Llama vision model**: the model must support image input and have the required vision bridge configured.
+- **Try the updated example workflow**: replace the sample image with your own, then tune settings for your model.
+- Also fixed Chinese/English UI labels and model-option refresh.
 
 ## Install
 
